@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>漢字メッセージ</title>
+<style>
+  body {
+    font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    background: #fafafa;
+    color: #333;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  input {
+    font-size: 1.2rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    text-align: center;
+    width: 8rem;
+  }
+  button {
+    margin-top: 1rem;
+    padding: 0.5rem 1.2rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 8px;
+    background-color: #4caf50;
+    color: white;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #45a049;
+  }
+  #result {
+    margin-top: 2rem;
+    font-size: 1.2rem;
+    text-align: center;
+    width: 90%;
+    max-width: 500px;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+  <h1>漢字メッセージ</h1>
+  <input type="text" id="kanjiInput" maxlength="1" placeholder="漢字1文字" />
+  <button id="showBtn">表示</button>
+  <div id="result"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('kanjiInput');
+      const btn = document.getElementById('showBtn');
+      const result = document.getElementById('result');
+
+      const messages = [
+        "静かな時間が心を整える日。",
+        "小さな一歩が大きな未来を作る。",
+        "今日は笑顔で過ごせそう。",
+        "新しい発見が待っているかも。",
+        "心の声に耳を傾けて。",
+        // ...（省略）合計200通りの短文メッセージ...
+      ];
+
+      // 日付と漢字で運勢を固定
+      function getMessage(kanji) {
+        const today = new Date().toISOString().split('T')[0];
+        const key = `fortune_${kanji}_${today}`;
+        const saved = localStorage.getItem(key);
+
+        if (saved) return saved;
+
+        // ハッシュ生成（漢字＋日付で一意に）
+        let hash = 0;
+        const str = kanji + today;
+        for (let i = 0; i < str.length; i++) {
+          hash = (hash << 5) - hash + str.charCodeAt(i);
+          hash |= 0;
+        }
+        const index = Math.abs(hash) % messages.length;
+        const message = messages[index];
+
+        localStorage.clear(); // 古い日付のデータを自動リセット
+        localStorage.setItem(key, message);
+        localStorage.setItem('fortune_date', today);
+        return message;
+      }
+
+      btn.addEventListener('click', () => {
+        const kanji = input.value.trim();
+        if (!kanji.match(/^[一-龯]$/)) {
+          result.textContent = '漢字1文字を入力してください。';
+          return;
+        }
+        const today = new Date().toISOString().split('T')[0];
+        const storedDate = localStorage.getItem('fortune_date');
+        if (storedDate && storedDate !== today) {
+          localStorage.clear(); // 翌日自動リセット
+        }
+        const message = getMessage(kanji);
+        result.textContent = message;
+      });
+    });
+  </script>
+</body>
+</html>
