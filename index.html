@@ -3,84 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ARマーカー生成アプリ</title>
+  <title>ARマーカー表示テスト</title>
+  <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.3.2/aframe/build/aframe-ar.js"></script>
   <style>
-    body {
-      font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
-      background: #f7f8fa;
+    body, html {
       margin: 0;
-      padding: 0;
-      text-align: center;
-    }
-    #container {
-      max-width: 420px;
-      margin: 40px auto;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      padding: 25px;
-    }
-    h1 {
-      font-size: 1.5rem;
-      margin-bottom: 10px;
-    }
-    input[type="file"] {
-      width: 100%;
-      padding: 10px;
-      margin: 15px 0;
-    }
-    button {
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 12px 16px;
-      border-radius: 8px;
-      font-size: 1rem;
-      cursor: pointer;
-      width: 100%;
-      margin-top: 5px;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    p {
-      color: #555;
+      overflow: hidden;
+      height: 100%;
+      background-color: black;
     }
   </style>
 </head>
 <body>
-  <div id="container">
-    <h1>ARマーカー生成アプリ</h1>
-    <p>画像をアップロードすると、NFTマーカー生成ページが開きます。</p>
-    <input type="file" id="imageInput" accept="image/*">
-    <button id="generateBtn">マーカーを生成する</button>
-  </div>
+  <a-scene embedded arjs="debugUIEnabled: false;">
+    <!-- あなたのマーカー -->
+    <a-marker type="pattern" url="markers/myMarker.patt">
+      <a-box position="0 0.5 0" material="color: yellow;"></a-box>
+    </a-marker>
 
-  <script>
-    const input = document.getElementById("imageInput");
-    const button = document.getElementById("generateBtn");
-
-    button.addEventListener("click", async () => {
-      const file = input.files[0];
-      if (!file) {
-        alert("画像を選択してください。");
-        return;
-      }
-
-      // 画像をBase64に変換
-      const reader = new FileReader();
-      reader.onload = e => {
-        const base64 = e.target.result;
-        const blob = new Blob([base64], { type: "text/plain" });
-        const url = URL.createObjectURL(blob);
-
-        // NFT Marker Creatorへリダイレクト
-        const generatorURL = "https://carnaux.github.io/NFT-Marker-Creator/#/";
-        alert("NFT Marker Creatorが開きます。そちらでマーカーを生成してください。");
-        window.open(generatorURL, "_blank");
-      };
-      reader.readAsDataURL(file);
-    });
-  </script>
+    <a-entity camera></a-entity>
+  </a-scene>
 </body>
 </html>
