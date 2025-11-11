@@ -5,15 +5,59 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>画像共有アプリ（誰でもアップロード可）</title>
   <style>
-    body{font-family:system-ui,-apple-system,"メイリオ",sans-serif;padding:20px;max-width:900px;margin:0 auto}
-    header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-    .uploader{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    #gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:20px}
-    .card{border:1px solid #ddd;border-radius:8px;padding:8px;background:white}
-    .card img{width:100%;height:160px;object-fit:cover;border-radius:6px}
-    .meta{font-size:12px;color:#555;margin-top:6px;white-space:pre-line}
-    #status{font-size:13px;color:#333}
-    button{cursor:pointer;padding:8px 12px;border-radius:6px;border:1px solid #bbb;background:#f7f7f7}
+    body{
+      font-family:system-ui,-apple-system,"メイリオ",sans-serif;
+      padding:20px;
+      max-width:900px;
+      margin:0 auto
+    }
+    header{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:16px
+    }
+    .uploader{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap
+    }
+    #gallery{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+      gap:12px;
+      margin-top:20px
+    }
+    .card{
+      border:1px solid #ddd;
+      border-radius:8px;
+      padding:8px;
+      background:white
+    }
+    .card img{
+      width:100%;
+      height:160px;
+      object-fit:cover;
+      border-radius:6px
+    }
+    .meta{
+      font-size:12px;
+      color:#555;
+      margin-top:6px;
+      white-space:pre-line
+    }
+    #status{
+      font-size:13px;
+      color:#333
+    }
+    button{
+      cursor:pointer;
+      padding:8px 12px;
+      border-radius:6px;
+      border:1px solid #bbb;
+      background:#f7f7f7
+    }
   </style>
 </head>
 <body>
@@ -23,8 +67,12 @@
   </header>
 
   <section class="uploader">
-    <label>投稿者名（任意）<br><input id="username" type="text" placeholder="例: ゲスト123"></label>
-    <label>画像を選択<br><input id="fileInput" type="file" accept="image/*"></label>
+    <label>投稿者名（必須）<br>
+      <input id="username" type="text" placeholder="例: ゲスト123">
+    </label>
+    <label>画像を選択<br>
+      <input id="fileInput" type="file" accept="image/*">
+    </label>
     <button id="uploadBtn">アップロード</button>
   </section>
 
@@ -33,14 +81,14 @@
     <div id="gallery"></div>
   </section>
 
-  <!-- ✅ Firebase v8系 SDK（これが最も安定して動作します） -->
+  <!-- Firebase v8系 SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 
   <script>
     // Firebase設定
-   const firebaseConfig = {
+    const firebaseConfig = {
   apiKey: "AIzaSyCzDqI2YaOLoU4muurvvxBs4fOOSkH8Yew",
   authDomain: "image-share-89916.firebaseapp.com",
   projectId: "image-share-89916",
@@ -61,9 +109,19 @@
     const status = document.getElementById("status");
 
     uploadBtn.addEventListener("click", async () => {
-      const name = usernameInput.value.trim() || "名無しユーザー";
+      const name = usernameInput.value.trim();
       const file = fileInput.files[0];
-      if (!file) { status.textContent = "画像を選択してください。"; return; }
+
+      // 投稿者名が未入力の場合はアップロード中止
+      if (!name) {
+        status.textContent = "投稿者名を入力してください。";
+        return;
+      }
+
+      if (!file) {
+        status.textContent = "画像を選択してください。";
+        return;
+      }
 
       uploadBtn.disabled = true;
       status.textContent = "アップロード中...";
@@ -89,7 +147,7 @@
       }
     });
 
-    // ギャラリー更新
+    // 共有ギャラリー更新（リアルタイム）
     db.collection("test-images").onSnapshot(snapshot => {
       gallery.innerHTML = "";
       snapshot.forEach(doc => {
