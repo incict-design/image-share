@@ -146,7 +146,7 @@ registerBtn.addEventListener("click", async () => {
     const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
     await userCredential.user.updateProfile({displayName:displayName});
     await userCredential.user.sendEmailVerification();
-    alert("確認メールを送信しました。メール内のリンクで認証してください。");
+    alert("確認メールを送信しました。迷惑メールフォルダも確認してください。");
   }catch(e){ console.error(e); alert(e.message); }
 });
 
