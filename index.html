@@ -3,22 +3,21 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>画像共有アプリ（Fire Storage削除対応）</title>
+<title>登録制 画像共有アプリ</title>
 <style>
 body{ font-family:system-ui,-apple-system,"メイリオ",sans-serif; padding:20px; max-width:900px; margin:0 auto;}
 header{ display:flex; align-items:center; gap:12px; margin-bottom:16px;}
 .uploader{ display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
 #gallery {
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* iPhoneで3列固定 */
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   justify-items: center;
   margin-top: 20px;
 }
-
 .card {
-  width: 110px;       /* 固定幅 */
-  height: 150px;      /* 固定高さ */
+  width: 110px;
+  height: 150px;
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 6px;
@@ -27,49 +26,42 @@ header{ display:flex; align-items:center; gap:12px; margin-bottom:16px;}
   position: relative;
   transition: transform 0.2s;
 }
-
 .card img {
-  width: 100px;       /* 固定サイズ */
-  height: 100px;      /* 正方形で統一 */
+  width: 100%;
+  height: 160px;
   object-fit: cover;
   border-radius: 6px;
+  transition: transform 0.3s;
 }
-
-.meta {
-  font-size: 11px;
-  color: #555;
-  margin-top: 4px;
-  text-align: center;
-  white-space: pre-line;
-}
-.card{ border:1px solid #ddd; border-radius:8px; padding:8px; background:white; cursor:pointer; position:relative;}
-.card img{ width:100%; height:160px; object-fit:cover; border-radius:6px; transition: transform 0.3s;}
 .card img:hover{ transform: scale(1.05);}
 .meta{ font-size:12px; color:#555; margin-top:6px; white-space:pre-line;}
 .delete-btn{ position:absolute; top:6px; right:6px; background:red; color:white; border:none; border-radius:4px; padding:2px 6px; font-size:12px; cursor:pointer;}
 #status{ font-size:13px; color:#333;}
 button{ cursor:pointer; padding:8px 12px; border-radius:6px; border:1px solid #bbb; background:#f7f7f7;}
-@media(min-width: 1100px){ #gallery{ grid-template-columns: repeat(6,1fr); } }
-@media(min-width: 900px) and (max-width:1099px){ #gallery{ grid-template-columns: repeat(5,1fr); } }
-@media(max-width: 899px) and (min-width:700px){ #gallery{ grid-template-columns: repeat(4,1fr); } }
-@media(max-width: 699px) and (min-width:500px){ #gallery{ grid-template-columns: repeat(3,1fr); } }
-@media(max-width: 499px) and (min-width:350px){ #gallery{ grid-template-columns: repeat(2,1fr); } }
-@media(max-width: 349px){ #gallery{ grid-template-columns: repeat(1,1fr); } }
 #overlay{ position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; justify-content:center; align-items:center; z-index:1000;}
 #overlay img{ max-width:90%; max-height:90%; border-radius:8px; cursor:pointer;}
+.auth input{ margin-bottom:6px; display:block;}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Image-Share</h1>
+  <h1>Image-Share（登録制）</h1>
   <div id="status" style="margin-left:auto"></div>
 </header>
 
+<section class="auth">
+  <h2>アカウント</h2>
+  <div id="authStatus">未ログイン</div>
+  <label>メールアドレス<br><input id="email" type="email"></label>
+  <label>パスワード<br><input id="password" type="password"></label>
+  <label>投稿者名（表示用）<br><input id="displayName" type="text"></label>
+  <button id="registerBtn">新規登録</button>
+  <button id="loginBtn">ログイン</button>
+  <button id="logoutBtn" style="display:none;">ログアウト</button>
+</section>
+
 <section class="uploader">
-  <label>投稿者名（必須）<br>
-    <input id="username" type="text" placeholder="">
-  </label>
   <label>画像を選択<br>
     <input id="fileInput" type="file" accept="image/*">
   </label>
@@ -85,9 +77,11 @@ button{ cursor:pointer; padding:8px 12px; border-radius:6px; border:1px solid #b
   <img id="overlayImg" src="">
 </div>
 
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
 <script>
 const firebaseConfig = {
@@ -99,10 +93,19 @@ const firebaseConfig = {
   appId: "1:859639070035:web:aab7543659c3d1a877f5a6"
 };
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 const db = firebase.firestore();
 const storage = firebase.storage();
 
-const usernameInput = document.getElementById("username");
+// DOM
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const displayNameInput = document.getElementById("displayName");
+const registerBtn = document.getElementById("registerBtn");
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const authStatus = document.getElementById("authStatus");
+
 const fileInput = document.getElementById("fileInput");
 const uploadBtn = document.getElementById("uploadBtn");
 const gallery = document.getElementById("gallery");
@@ -111,28 +114,72 @@ const status = document.getElementById("status");
 const overlay = document.getElementById("overlay");
 const overlayImg = document.getElementById("overlayImg");
 
-// アップロード
+// ----- 認証 -----
+registerBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+  const pass = passwordInput.value;
+  const displayName = displayNameInput.value.trim();
+  if(!email || !pass || !displayName){ alert("全て入力してください"); return; }
+  try {
+    const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+    await userCredential.user.updateProfile({ displayName: displayName });
+    await userCredential.user.sendEmailVerification();
+    alert("確認メールを送信しました。メール内のリンクで認証してください。");
+  } catch(e){ console.error(e); alert(e.message); }
+});
+
+loginBtn.addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+  const pass = passwordInput.value;
+  if(!email || !pass){ alert("メール・パスワードを入力してください"); return; }
+  try {
+    const userCredential = await auth.signInWithEmailAndPassword(email, pass);
+    if(!userCredential.user.emailVerified){
+      alert("メール認証が完了していません。確認メールをチェックしてください。");
+      await auth.signOut();
+      return;
+    }
+    authStatus.textContent = `ログイン: ${userCredential.user.displayName}`;
+    logoutBtn.style.display = "inline-block";
+    registerBtn.style.display = loginBtn.style.display = "none";
+  } catch(e){ console.error(e); alert(e.message); }
+});
+
+logoutBtn.addEventListener("click", async () => {
+  await auth.signOut();
+  authStatus.textContent = "未ログイン";
+  logoutBtn.style.display = "none";
+  registerBtn.style.display = loginBtn.style.display = "inline-block";
+});
+
+// ----- 投稿 -----
 uploadBtn.addEventListener("click", async () => {
-  const name = usernameInput.value.trim();
+  const user = auth.currentUser;
+  if(!user || !user.emailVerified){
+    status.textContent = "ログインしてメール認証を完了してください";
+    return;
+  }
   const file = fileInput.files[0];
-  if(!name){ status.textContent="投稿者名を入力してください。"; return; }
-  if(!file){ status.textContent="画像を選択してください。"; return; }
+  if(!file){ status.textContent="画像を選択してください"; return; }
+
   uploadBtn.disabled = true;
   status.textContent = "アップロード中...";
   try {
-    const ref = storage.ref("test-images/" + name + ".jpg");
+    const ref = storage.ref("test-images/" + user.uid);
     await ref.put(file);
     const url = await ref.getDownloadURL();
-    await db.collection("test-images").doc(name).set({ username:name, url:url, updatedAt:new Date() });
+    await db.collection("test-images").doc(user.uid).set({
+      username: user.displayName,
+      url: url,
+      updatedAt: new Date()
+    });
     status.textContent = "アップロード完了！";
     fileInput.value = "";
-  } catch(e) {
-    console.error(e);
-    status.textContent = "アップロード失敗。";
-  } finally { uploadBtn.disabled = false; }
+  } catch(e) { console.error(e); status.textContent = "アップロード失敗"; }
+  finally { uploadBtn.disabled = false; }
 });
 
-// ギャラリー更新＋Fire Storageに存在しない場合のみ削除ボタン付与
+// ----- ギャラリー -----
 db.collection("test-images").onSnapshot(snapshot => {
   gallery.innerHTML = "";
   snapshot.forEach(doc => {
@@ -152,43 +199,28 @@ db.collection("test-images").onSnapshot(snapshot => {
     metaDiv.textContent = `${data.username}\n${new Date(data.updatedAt.seconds*1000).toLocaleString()}`;
     div.appendChild(metaDiv);
 
-    // Fire Storageに画像が存在するかチェック
-    storage.ref("test-images/" + data.username + ".jpg").getMetadata()
-      .then(() => {
-        // 画像存在 → 削除ボタンは付けない
-      })
+    // Fire Storage に存在しない場合のみ削除ボタン
+    storage.ref("test-images/" + docId).getMetadata()
       .catch(() => {
-        // 画像がFire Storageに存在しない場合のみ削除ボタンを付与
         const delBtn = document.createElement("button");
         delBtn.className = "delete-btn";
         delBtn.textContent = "削除";
-        delBtn.addEventListener("click", async (e)=>{
+        delBtn.addEventListener("click", async e => {
           e.stopPropagation();
-          if(!confirm("Fire Storage上の画像は削除済みです。Firestoreからも削除しますか？")) return;
-          try{
-            await db.collection("test-images").doc(docId).delete();
-            status.textContent = "Firestore上のデータを削除しました";
-          } catch(err){
-            console.error(err);
-            status.textContent = "削除失敗";
-          }
+          if(!confirm("Firestoreからも削除しますか？")) return;
+          try{ await db.collection("test-images").doc(docId).delete(); status.textContent="削除しました"; }
+          catch(err){ console.error(err); status.textContent="削除失敗"; }
         });
         div.appendChild(delBtn);
       });
 
-    imgEl.addEventListener("click", ()=>{
-      overlayImg.src = data.url;
-      overlay.style.display = "flex";
-    });
-
+    imgEl.addEventListener("click", ()=>{ overlayImg.src=data.url; overlay.style.display="flex"; });
     gallery.appendChild(div);
   });
 });
 
-overlay.addEventListener("click", ()=>{
-  overlay.style.display = "none";
-  overlayImg.src = "";
-});
+overlay.addEventListener("click", ()=>{ overlay.style.display="none"; overlayImg.src=""; });
 </script>
 </body>
 </html>
+
